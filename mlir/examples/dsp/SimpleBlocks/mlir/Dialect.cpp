@@ -563,6 +563,38 @@ void GainOp::inferShapes() { getResult().setType(getLhs().getType()) ;}
  /// Infer the output shape of the SubOp, this is required by the shape inference
  /// interface.
  void SubOp::inferShapes() { getResult().setType(getLhs().getType()); }
+//===----------------------------------------------------------------------===//
+ // leftShiftOp
+ //===----------------------------------------------------------------------===//
+
+ void LeftShiftOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
+                   mlir::Value lhs, mlir::Value rhs) {
+   state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
+   state.addOperands({lhs, rhs});
+ }
+
+void LeftShiftOp::inferShapes() { getResult().setType(getLhs().getType()); }
+  // mlir::LogicalResult LeftShiftOp::verify() {
+  //     auto lhsType = llvm::dyn_cast<RankedTensorType>(getLhs().getType());
+  //     auto rhsType = llvm::dyn_cast<RankedTensorType>(getRhs().getType());
+  //     auto resultType = llvm::dyn_cast<RankedTensorType>(getType());
+
+  //     if(!lhsType || !resultType) return mlir::success();
+
+  //     // ensure the rhs operand of power op is and 1*1 tensor
+  //     if(rhsType.getRank()!=1 || rhsType.getNumElements()!=1) {
+  //         return emitOpError("RHS operand of power op must be one-dimensional tensor with a single floating point element.");
+  //     }
+
+  //   // ensure result shape matches lhs shape
+  //   auto resultShape = resultType.getShape();
+  //   if(!std::equal(lhsType.getShape().begin(), lhsType.getShape().end(),
+  //               resultShape.rbegin())) {
+  //       return emitError() << "expected result shape to be the same as the lhs input operand.";
+  //   }
+
+  //     return mlir::success();
+  // }
 
 //===----------------------------------------------------------------------===//
 // zeroCrossCountOp

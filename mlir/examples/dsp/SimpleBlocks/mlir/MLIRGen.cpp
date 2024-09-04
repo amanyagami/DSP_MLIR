@@ -359,7 +359,14 @@ private:
       }
       return builder.create<GainOp>(location, operands[0] , operands[1]);
     }
-
+    if(callee == "leftShift"){
+      if(call.getArgs().size() != 2){
+        emitError(location, "MLIR codegen encountered an error: dsp.gain "
+                            "accepts only 2 arguments");
+        return nullptr;
+      }
+      return builder.create<LeftShiftOp>(location, operands[0] , operands[1]);
+    }
     // Sub Op
     if(callee == "sub"){
        if(call.getArgs().size() != 2){
@@ -369,7 +376,6 @@ private:
        }
        return builder.create<SubOp>(location, operands[0], operands[1]);
     }
-
     if(callee == "zeroCrossCount"){
       if(call.getArgs().size() != 1){
         emitError(location, "MLIR codegen encountered an error: dsp.zeroCrossCount "

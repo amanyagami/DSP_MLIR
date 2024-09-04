@@ -517,6 +517,31 @@ def SubOp : Dsp_Op<"sub", [Pure , DeclareOpInterfaceMethods<ShapeInferenceOpInte
  }
 
 //===----------------------------------------------------------------------===//
+// LeftShiftOp
+//===----------------------------------------------------------------------===//
+
+def LeftShiftOp : Dsp_Op<"leftShift", [Pure , DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+   let summary = "left shift operator shifts bits left, multiplying by powers of two ";
+   let description = [{
+     The left shift operator (<<) is a bitwise operator used in programming to shift the bits of a number to the left. 
+     This operation effectively multiplies the number by powers of two.
+     Each left shift operation shifts all bits in the binary representation of the number one position to the left,
+     and introduces a zero in the least significant bit position.
+     ex:
+      0001 << 1 results in 0010 (which is 2 in decimal).
+      0001 << 2 results in 0100 (which is 4 in decimal).
+   }];
+
+   let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs);//working 
+   let results = (outs F64Tensor);
+
+   
+   let builders = [
+     OpBuilder<(ins "Value":$lhs, "Value":$rhs)>
+   ];
+ }
+
+//===----------------------------------------------------------------------===//
 // zeroCrossCountOp
 //===----------------------------------------------------------------------===//
 def zeroCrossCountOp : Dsp_Op<"zeroCrossCount" ,

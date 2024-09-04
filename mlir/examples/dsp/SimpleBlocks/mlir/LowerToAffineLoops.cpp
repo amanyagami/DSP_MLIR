@@ -29,7 +29,7 @@
 #include "toy/Dialect.h"
 #include "toy/DebugConfig.h"
 #include "toy/Passes.h"
-
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -5974,6 +5974,80 @@ struct GainOpLowering: public ConversionPattern {
 
 };
 //===----------------------------------------------------------------------===//
+// ToyToAffine RewritePatterns: LeftShift operations
+//===----------------------------------------------------------------------===//
+struct LeftShiftOpLowering: public ConversionPattern {
+      LeftShiftOpLowering(MLIRContext *ctx)
+        : ConversionPattern(dsp::LeftShiftOp::getOperationName(), 1 , ctx) {}
+
+     LogicalResult 
+    matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+              ConversionPatternRewriter &rewriter) const final {
+      //dsp.LeftShiftOp has 2 operands -- both of type tensor f64 , 2ndOperand should have only 1 element
+
+      //Get the location of LeftShiftOp
+      auto loc = op->getLoc();
+           
+      //Pseudo-code:
+          //  y[i] = y[i] <<  for  0<=i<N
+          //  
+    //output for result type
+    auto tensorType = llvm::cast<RankedTensorType>((*op->result_type_begin()));  
+
+    //allocation & deallocation for the result of this operation
+    auto memRefType = convertTensorToMemRef(tensorType);
+    auto alloc = insertAllocAndDealloc(memRefType, loc, rewriter);
+
+    //construct affine loops for the input
+    SmallVector<int64_t, 4> lowerBounds(tensorType.getRank(), /*Value*/0);
+    SmallVector<int64_t, 4> steps(tensorType.getRank(), /*Value=*/1);    
+    LeftShiftOpAdaptor LeftShiftOpAdaptor(operands);
+    // Value GetValueAtIndx2ndArg = op->getOperand(1);
+    // dsp::ConstantOp constantOp2ndArg = GetValueAtIndx2ndArg.getDefiningOp<dsp::ConstantOp>();
+    // DenseElementsAttr constantRhsValue = constantOp2ndArg.getValue();;
+    // auto elements = constantRhsValue.getValues<FloatAttr>();
+    // float gain = elements[0].getValueAsDouble();
+
+    // Value gain = gainOpOpAdaptor.getRhs();
+    
+    DEBUG_PRINT_NO_ARGS();
+
+    //first from 1 <= i < N
+    int64_t lb = 0 ;
+    int64_t ub = tensorType.getShape()[0];   
+    int64_t step = 1;
+
+    DEBUG_PRINT_NO_ARGS();
+
+    
+    //loop from 0 <= i < N
+
+    affine::AffineForOp forOpY = rewriter.create<AffineForOp>(loc, lb, ub, step);
+    auto ivY = forOpY.getInductionVar();
+    rewriter.setInsertionPointToStart(forOpY.getBody());
+
+    Value getLhs = rewriter.create<AffineLoadOp>(loc, LeftShiftOpAdaptor.getLhs() , ivY);
+    Value getRhs = rewriter.create<AffineLoadOp>(loc, LeftShiftOpAdaptor.getRhs() , ValueRange{});
+    // convert to int -> perform left shift
+    Type intType = rewriter.getIntegerType(32); // Assuming 32-bit integer conversion
+    Value convertedLhs = rewriter.create<arith::FPToSIOp>(loc, intType, getLhs);
+    Value convertedRhs = rewriter.create<arith::FPToSIOp>(loc, intType, getRhs);
+    // after left shift -> convert back to float
+
+    Type floatType = rewriter.getF64Type();
+    Value ConvertedResult = rewriter.create<arith::ShLIOp>(loc, convertedLhs,convertedRhs );
+    Value Result = rewriter.create<arith::SIToFPOp>(loc, floatType, ConvertedResult);
+
+    rewriter.create<AffineStoreOp>(loc, Result, alloc, ValueRange{ivY}); 
+    DEBUG_PRINT_NO_ARGS();
+    rewriter.setInsertionPointAfter(forOpY);
+    rewriter.replaceOp(op, alloc);
+      
+    return success();
+  }
+
+};
+//===----------------------------------------------------------------------===//
 // ToyToAffine RewritePatterns: Binary operations
 //===----------------------------------------------------------------------===//
 
@@ -6274,7 +6348,7 @@ void ToyToAffineLoweringPass::runOnOperation() {
   patterns.add<AddOpLowering, ConstantOpLowering, FuncOpLowering, MulOpLowering, 
                PrintOpLowering, ReturnOpLowering, TransposeOpLowering ,
                DelayOpLowering, GainOpLowering, SubOpLowering, FIRFilterResponseOpLowering, 
-               SlidingWindowAvgOpLowering, DownSamplingOpLowering, 
+               SlidingWindowAvgOpLowering, DownSamplingOpLowering, LeftShiftOpLowering,
                UpSamplingOpLowering, LowPassFilter1stOrderOpLowering, 
                HighPassFilterOpLowering, FFT1DOpLowering, IFFT1DOpLowering,
                HammingWindowOpLowering, DCTOpLowering, filterOpLowering, DivOpLowering,
